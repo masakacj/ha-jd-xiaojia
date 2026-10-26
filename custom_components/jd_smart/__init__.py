@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from copy import deepcopy
+
 from homeassistant.components import persistent_notification
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
@@ -117,6 +119,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: JdSmartConfigEntry) -> b
         client=client,
         coordinators=coordinators,
         auth_retry_manager=auth_retry_manager,
+        configured_data=_data_without_tokens(entry.data),
+        configured_options=deepcopy(entry.options),
     )
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     entry.async_on_unload(entry.add_update_listener(async_reload_entry))
@@ -132,11 +136,23 @@ async def async_unload_entry(hass: HomeAssistant, entry: JdSmartConfigEntry) -> 
     return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
 
 
-async def async_reload_entry(hass: HomeAssistant, entry: JdSmartConfigEntry) -> bool:
-    """Reload a config entry."""
-    if not await async_unload_entry(hass, entry):
-        return False
-    return await async_setup_entry(hass, entry)
+def _data_without_tokens(data: dict) -> dict:
+    """Snapshot non-token settings for detecting meaningful config changes."""
+    return deepcopy({key: value for key, value in data.items() if key not in (CONF_COOKIE, CONF_TGT)})
+
+
+async def async_reload_entry(hass: HomeAssistant, entry: JdSmartConfigEntry) -> None:
+    """Schedule the proper HA reload, ignoring in-place token renewals."""
+    runtime = getattr(entry, "runtime_data", None)
+    if (
+        runtime is not None
+        and entry.data.get(CONF_COOKIE) == runtime.client.credentials.cookie
+        and entry.data.get(CONF_TGT) == runtime.client.credentials.tgt
+        and _data_without_tokens(entry.data) == runtime.configured_data
+        and entry.options == runtime.configured_options
+    ):
+        return
+    await hass.config_entries.async_reload(entry.entry_id)
 
 
 def _entry_devices(data: dict) -> list[dict[str, str]]:

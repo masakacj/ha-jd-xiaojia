@@ -506,7 +506,7 @@ class JdSmartAcConfigFlow(ConfigFlow, domain=DOMAIN):
         )
 
     async def _async_update_auth_entries(self, auth_data: dict[str, Any]) -> None:
-        """Update auth fields for all existing entries and reload them."""
+        """Update auth fields; the entry's listener owns reloading."""
         for entry in self._async_current_entries():
             data = dict(entry.data)
             for key in AUTH_KEYS:
@@ -520,7 +520,6 @@ class JdSmartAcConfigFlow(ConfigFlow, domain=DOMAIN):
                 entry.entry_id, feed_ids
             ):
                 persistent_notification.async_dismiss(self.hass, notification_id)
-            await self.hass.config_entries.async_reload(entry.entry_id)
 
 
 def _device_label(device: JdSmartDevice) -> str:

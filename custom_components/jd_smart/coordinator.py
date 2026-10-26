@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 from collections.abc import Callable
 from dataclasses import dataclass
+from typing import Any
 from datetime import datetime
 
 import homeassistant.util.dt as dt_util
@@ -45,6 +46,8 @@ class JdSmartRuntimeData:
     client: JdSmartClient
     coordinators: dict[str, JdSmartCoordinator]
     auth_retry_manager: JdSmartAuthRetryManager
+    configured_data: dict[str, Any]
+    configured_options: dict[str, Any]
 
 
 class JdSmartAuthRetryManager:
