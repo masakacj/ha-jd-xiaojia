@@ -245,7 +245,9 @@ class JdSmartCoordinator(DataUpdateCoordinator[JdSmartSnapshot]):
     async def _async_update_data(self) -> JdSmartSnapshot:
         """Fetch latest snapshot."""
         self.auth_retry_pending = False
-        digest = self.data.digest if self.data else ""
+        # Cloud delta responses can omit unchanged streams; request the full
+        # snapshot so sensor values do not intermittently become unknown.
+        digest = ""
         failed_tgt = self.client.credentials.tgt
         try:
             snapshot = await self.client.async_get_snapshot(self.feed_id, digest)

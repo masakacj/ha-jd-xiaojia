@@ -24,6 +24,21 @@ class SafeDiagnosticsTest(unittest.TestCase):
         self.assertNotIn("ConfigEntryAuthFailed", ast.unparse(handler))
         self.assertIn("UpdateFailed", ast.unparse(handler))
 
+    def test_periodic_snapshot_fetches_full_state(self):
+        source = (PACKAGE / "coordinator.py").read_text(encoding="utf-8")
+        tree = ast.parse(source)
+        coordinator = next(
+            node for node in tree.body
+            if isinstance(node, ast.ClassDef) and node.name == "JdSmartCoordinator"
+        )
+        updater = next(
+            node for node in coordinator.body
+            if isinstance(node, ast.AsyncFunctionDef) and node.name == "_async_update_data"
+        )
+        body = ast.unparse(updater)
+        self.assertIn("digest = ''", body)
+        self.assertNotIn("self.data.digest if self.data", body)
+
     def test_http_failures_do_not_log_response_body(self):
         source = (PACKAGE / "api.py").read_text(encoding="utf-8")
         self.assertNotIn("_truncate(text)", source)
