@@ -120,7 +120,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: JdSmartConfigEntry) -> b
         coordinators=coordinators,
         auth_retry_manager=auth_retry_manager,
         configured_data=_data_without_tokens(entry.data),
-        configured_options=deepcopy(entry.options),
+        configured_options=deepcopy(dict(entry.options)),
     )
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     entry.async_on_unload(entry.add_update_listener(async_reload_entry))

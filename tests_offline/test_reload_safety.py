@@ -35,7 +35,7 @@ class ConfigEntryReloadSafetyTest(unittest.TestCase):
     def test_config_changes_snapshot_before_listener(self):
         body = function_body("__init__.py", "async_setup_entry")
         self.assertIn("configured_data=_data_without_tokens(entry.data)", body)
-        self.assertIn("configured_options=deepcopy(entry.options)", body)
+        self.assertIn("configured_options=deepcopy(dict(entry.options))", body)
 
 
 if __name__ == "__main__":
