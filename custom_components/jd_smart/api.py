@@ -763,16 +763,18 @@ class JdSmartClient:
                 )
                 if response.status != HTTPStatus.OK:
                     LOGGER.warning(
-                        "JD Smart HTTP error: path=%s, http_status=%s, body=%s",
+                        "JD Smart HTTP error: path=%s, http_status=%s, body_length=%s",
                         url.split("?", 1)[0],
                         response.status,
-                        _truncate(text),
+                        len(text),
                     )
+                    if response.status == HTTPStatus.UNAUTHORIZED:
+                        raise JdSmartAuthError("JD Smart credentials rejected (HTTP 401)")
                     raise ClientResponseError(
                         response.request_info,
                         response.history,
                         status=response.status,
-                        message=text,
+                        message=f"HTTP status {response.status}",
                         headers=response.headers,
                     )
         except ClientResponseError as err:
@@ -780,8 +782,10 @@ class JdSmartClient:
                 f"JD Smart HTTP status: {err.status}"
             ) from err
         except (ClientError, TimeoutError) as err:
+            # An aiohttp exception may include the original URL with an
+            # encrypted request query. Avoid placing it into HA log files.
             raise JdSmartCannotConnectError(
-                f"Unable to reach JD Smart: {err}"
+                f"Unable to reach JD Smart ({type(err).__name__})"
             ) from err
 
         try:
@@ -790,28 +794,26 @@ class JdSmartClient:
             raise JdSmartCannotConnectError("Invalid JSON response") from err
 
         if str(payload.get("code", "")) == "604":
-            raise JdSmartDecryptError(payload.get("msg", "Wangyin decrypt failed"))
+            raise JdSmartDecryptError("Wangyin decrypt failed (604)")
 
         error = payload.get("error")
         if error:
             error_code = str(error.get("errorCode", ""))
-            error_info = error.get("errorInfo", "JD Smart API error")
             LOGGER.warning(
-                "JD Smart API error: path=%s, code=%s, info=%s, status=%s",
+                "JD Smart API error: path=%s, code=%s, status=%s",
                 url.split("?", 1)[0],
                 error_code,
-                error_info,
                 payload.get("status"),
             )
             if error_code == "401":
-                raise JdSmartAuthError(error_info)
-            raise JdSmartError(error_info)
+                raise JdSmartAuthError("JD Smart credentials rejected (API 401)")
+            raise JdSmartError(f"JD Smart API error code: {error_code or 'unknown'}")
         if payload.get("status") not in (0, "0"):
             LOGGER.warning(
-                "JD Smart unexpected status: path=%s, status=%s, payload=%s",
+                "JD Smart unexpected status: path=%s, status=%s, payload_type=%s",
                 url.split("?", 1)[0],
                 payload.get("status"),
-                _truncate(json.dumps(payload, ensure_ascii=False)),
+                type(payload.get("result")).__name__,
             )
             raise JdSmartError(f"Unexpected status: {payload.get('status')}")
         return payload
@@ -939,18 +941,10 @@ class JdSmartClient:
         if result.get("status") in (1, "1"):
             return JdSmartSnapshot.from_result(result)
         LOGGER.warning(
-            "JD Smart unexpected control result: feed_id=%s, result=%s",
-            feed_id,
-            _truncate(json.dumps(result, ensure_ascii=False)),
+            "JD Smart unexpected control result: result_type=%s",
+            type(result).__name__,
         )
-        raise JdSmartControlError(f"Unexpected control result: {result}")
-
-
-def _truncate(value: str, limit: int = 1000) -> str:
-    """Truncate a log value."""
-    if len(value) <= limit:
-        return value
-    return f"{value[:limit]}..."
+        raise JdSmartControlError("Unexpected control result")
 
 
 def _parse_devices(data: Any) -> list[JdSmartDevice]:

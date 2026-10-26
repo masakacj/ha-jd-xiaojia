@@ -11,7 +11,7 @@ import homeassistant.util.dt as dt_util
 from homeassistant.components import persistent_notification
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady
+from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers.event import async_track_point_in_utc_time
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
@@ -32,7 +32,6 @@ from .const import (
     FAST_POLL_DURATION,
     FAST_POLL_INTERVAL,
     LOGGER,
-    UPDATE_AUTH_FAILURE_THRESHOLD,
     auth_refresh_notification_ids,
 )
 
@@ -337,29 +336,16 @@ class JdSmartCoordinator(DataUpdateCoordinator[JdSmartSnapshot]):
     async def _async_handle_update_failure(self, err: JdSmartError) -> None:
         """Handle repeated update failures."""
         self._consecutive_update_failures += 1
-        if self._consecutive_update_failures >= UPDATE_AUTH_FAILURE_THRESHOLD:
-            LOGGER.warning(
-                "JD Smart update failed repeatedly; requesting reauthentication: "
-                "feed_id=%s, failures=%s",
-                self.feed_id,
-                self._consecutive_update_failures,
-            )
-            self._async_create_reauth_notification()
-            raise ConfigEntryAuthFailed from err
-        raise UpdateFailed("Unable to update JD Smart") from err
-
-    @callback
-    def _async_create_reauth_notification(self) -> None:
-        """Create a persistent reauth notification."""
-        persistent_notification.async_create(
-            self.hass,
-            (
-                "JD Smart could not update the device data several times. "
-                "Open Settings > Devices & services and reauthenticate JD Smart."
-            ),
-            title="JD Smart authentication required",
-            notification_id=f"{DOMAIN}_{self.feed_id}_reauth",
+        # Only JdSmartAuthError means credentials need refreshing. API business
+        # errors and unsupported device snapshots must not stop future polls.
+        LOGGER.warning(
+            "JD Smart snapshot rejected; failures=%s, error_type=%s",
+            self._consecutive_update_failures,
+            type(err).__name__,
         )
+        raise UpdateFailed(
+            f"JD Smart snapshot error ({type(err).__name__}); see diagnostics"
+        ) from err
 
     async def async_shutdown(self) -> None:
         """Cancel pending coordinator callbacks."""
