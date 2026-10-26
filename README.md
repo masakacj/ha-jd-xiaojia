@@ -13,18 +13,17 @@
 - 目标设备：用户确认「二楼净水器」为 600G Pro；此型号的**实际设备 ID 与云端写入命令尚未完成验证**。
 - 只有填入**从目标设备实际成功调用中确认的** `flush_feed_id`、`flush_stream_id`、`flush_value` 后，才会在 HA 生成一键冲洗按钮。**不预设控制值、不执行定时冲洗、不自动写设备。**
 
-## 私有仓库安装须知
+## 通过 HACS 安装
 
-> **HACS 官方不支持直接安装 private GitHub 仓库。** 本仓库按 private 保存，可作为私人源码及更新存档；如果你需要在 Home Assistant 中安装，请使用以下手动安装办法。未来如果愿意将不含私密数据的源码仓库设为 public，才可以按 HACS 的「自定义仓库」流程添加。请勿把 GitHub Token、京东 Cookie 或设备凭据上传 Git。
+1. 打开 Home Assistant → **HACS → 右上角菜单 → 自定义仓库（Custom repositories）**。
+2. 仓库地址填写 `https://github.com/masakacj/ha-jd-xiaojia`，类型选择 **Integration（集成）**，点击添加。
+3. 在 HACS 中找到 **JD Xiaojia / 京东小家净水器**，下载安装。若没有立即显示，可刷新 HACS 页面。
+4. **如果已经安装原版 `ha-jd-smart`，请先备份**：两者集成域名都是 `jd_smart`，不能同时存在。
+5. 重启 Home Assistant，在「设置 → 设备与服务 → 添加集成」搜索 `JD Smart / JD Xiaojia`。
+6. 按你自己的已授权京东小家会话配置参数（Cookie、tgt 等）与设备信息。**这些私密信息仅填写在自己的 HA 内，不要上传到公开 GitHub。**
+7. 添加后先验证只读状态。600G Pro 自动冲洗操作尚待真实设备写入与云端接口验证，默认不启用。
 
-1. 在 GitHub 登录有权限访问本 private 仓库的账号，下载最新 Release 附件 `jd-xiaojia-ha-<版本号>.zip`。
-2. 解压后将 `custom_components/jd_smart` 文件夹复制到 Home Assistant 配置目录下的 `custom_components/jd_smart`（例如 HAOS 的 `/config/custom_components/jd_smart`）。
-3. **如果已经安装原版 `ha-jd-smart`，请先备份**：两者集成域名都是 `jd_smart`，不能同时存在。
-4. 重启 Home Assistant，然后在「设置 → 设备与服务 → 添加集成」中搜索 `JD Smart / JD Xiaojia`。
-5. 需要配置你自己的已授权京东小家请求参数（Cookie、tgt 等），以及目标设备信息。**请仅在你自己的 HA 中配置凭据，勿将登录凭据发到聊天或提交到 Git。**
-6. 成功添加后先验证只读状态，再单独验证目标 600G Pro 的控制协议；未经验证，请保持冲洗按钮禁用。
-
-如需后续从 private GitHub 自动更新，可选用具备私有仓库凭据支持的第三方更新工具，但那**不是 HACS 原生安装**，需要自行维护 GitHub 最小权限 Token。
+也可以通过 [Releases](https://github.com/masakacj/ha-jd-xiaojia/releases) 下载 ZIP，手动复制其中的 `custom_components/jd_smart` 到 HA 配置目录的 `custom_components/jd_smart`。
 
 ## 测试与兼容性边界
 
